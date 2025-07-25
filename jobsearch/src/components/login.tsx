@@ -10,27 +10,32 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import ThemeToggle from "./ThemeToggle";
 import { Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { api } from "@/lib/axios";
+import { useUser } from "@/context/users";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 export default function LoginCard() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const navigate = useNavigate();
+  const { login } = useUser();
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    try {
+      const response = await api.post("/login", { email, password });
 
-    await api
-      .post("/login", { email, password })
-      .then((response) => {
+      const token = response.data.token;
+      if (token) {
+        localStorage.setItem("token", token);
+        login(response.data.user);
         console.log("Login successful:", response.data);
         navigate("/home");
-      })
-      .catch((error) => {
-        console.error("Login failed:", error);
-      });
+      }
+    } catch (error) {
+      console.error("Login failed:", error);
+    }
   };
 
   return (
@@ -64,12 +69,6 @@ export default function LoginCard() {
               <div className="grid gap-2">
                 <div className="flex items-center">
                   <Label htmlFor="password">Password</Label>
-                  <a
-                    href="#"
-                    className="ml-auto inline-block text-sm underline-offset-4 hover:underline"
-                  >
-                    Forgot your password?
-                  </a>
                 </div>
                 <Input
                   id="password"

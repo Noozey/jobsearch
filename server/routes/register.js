@@ -1,4 +1,5 @@
 import { Router } from "express";
+import bcrypt from "bcrypt";
 import client from "../database/MangoDb.js";
 
 const router = Router();
@@ -9,7 +10,7 @@ router.get("/", async (req, res) => {
     const db = client.db("Auth");
     const collection = db.collection("register");
 
-    const users = await collection.find().toArray(); // Fetch all users
+    const users = await collection.find().toArray();
 
     res.status(200).json({
       message: "Users fetched successfully",
@@ -37,10 +38,13 @@ router.post("/", async (req, res) => {
     const db = client.db("Auth");
     const collection = db.collection("register");
 
+    const saltRounds = 10;
+    const hashedPassword = await bcrypt.hash(password, saltRounds);
+
     const newUser = {
       name,
       email,
-      password,
+      password: hashedPassword,
     };
 
     const result = await collection.insertOne(newUser);
