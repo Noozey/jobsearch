@@ -16,23 +16,15 @@ import {
   UserPlus,
   Bell,
   Settings,
-  Sun,
-  Moon,
   Home as HomeIcon,
   User,
   Users,
 } from "lucide-react";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 const Home = () => {
-  const [isDark, setIsDark] = useState(false);
-
-  const toggleTheme = () => {
-    setIsDark(!isDark);
-    document.documentElement.classList.toggle("dark");
-  };
-
   return (
-    <div className={`min-h-screen ${isDark ? "dark" : ""}`}>
+    <div className={`min-h-screen`}>
       <nav className="flex justify-between items-center p-4 border-b border-border sticky top-0 bg-background/80 backdrop-blur-sm z-50">
         <div className="flex items-center gap-6">
           <h1 className="text-xl font-bold text-primary">SocialHub</h1>
@@ -59,9 +51,7 @@ const Home = () => {
           <Button variant="ghost" size="sm">
             <Settings size={16} />
           </Button>
-          <Button variant="ghost" size="sm" onClick={toggleTheme}>
-            {isDark ? <Sun size={16} /> : <Moon size={16} />}
-          </Button>
+          <ThemeToggle />
         </div>
       </nav>
 
@@ -213,8 +203,8 @@ const MainFeed = () => {
   const handleLike = (postId: number) => {
     setPosts(
       posts.map((post) =>
-        post.id === postId ? { ...post, likes: post.likes + 1 } : post
-      )
+        post.id === postId ? { ...post, likes: post.likes + 1 } : post,
+      ),
     );
   };
 
