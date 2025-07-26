@@ -1,27 +1,33 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import RegisterCard from "./components/register.tsx";
-import LoginCard from "./components/login.tsx";
-import Home from "./components/home.tsx";
-import { useEffect, useState } from "react";
+import RegisterCard from "./components/register";
+import LoginCard from "./components/login";
+import Home from "./components/home";
+import ProtectedRoute from "./routes/ProtectedRoute";
+import { useUser } from "./context/users";
 
 const App = () => {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  useEffect(() => {
-    const token = localStorage.getItem("token");
-    setIsAuthenticated(!!token);
-  }, []);
+  const { isAuthenticate } = useUser();
+  console.log(isAuthenticate);
+
   return (
     <BrowserRouter>
       <Routes>
         <Route
           path="/"
-          element={isAuthenticated ? <Navigate to="/home" /> : <LoginCard />}
+          element={isAuthenticate ? <Navigate to="/home" /> : <LoginCard />}
         />
         <Route
           path="/register"
-          element={isAuthenticated ? <Navigate to="/home" /> : <RegisterCard />}
+          element={isAuthenticate ? <Navigate to="/home" /> : <RegisterCard />}
         />
-        <Route path="/home" element={<Home />} />
+        <Route
+          path="/home"
+          element={
+            <ProtectedRoute>
+              <Home />
+            </ProtectedRoute>
+          }
+        />
       </Routes>
     </BrowserRouter>
   );

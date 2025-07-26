@@ -26,7 +26,7 @@ export default function RegisterCard() {
     e.preventDefault();
 
     await api
-      .post("/register", { name, email, password })
+      .post("/auth/register", { name, email, password })
       .then((response) => {
         navigate("/home");
         console.log("Registration successful:", response.data);

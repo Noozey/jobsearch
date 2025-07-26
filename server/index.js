@@ -1,7 +1,7 @@
 import express from "express";
-import register from "./routes/register.js";
-import login from "./routes/login.js";
 import cors from "cors";
+import jwt from "jsonwebtoken";
+import { authRouter } from "./routes/auth.js";
 
 const app = express();
 app.use(
@@ -9,7 +9,7 @@ app.use(
     origin: "*",
     methods: ["GET", "POST", "PUT", "DELETE"],
     credentials: true,
-  })
+  }),
 );
 
 app.use(express.json());
@@ -20,6 +20,6 @@ app.get("/", (req, res) => {
   res.json({ hello: "hello" });
 });
 
-app.use("/register", register);
-app.use("/login", login);
+app.use("/auth", authRouter);
+
 app.listen(PORT, () => console.log("Server is alive on port.", PORT));

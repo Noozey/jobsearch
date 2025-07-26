@@ -24,13 +24,12 @@ export default function LoginCard() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const response = await api.post("/login", { email, password });
+      const response = await api.post("/atulogin", { email, password });
 
       const token = response.data.token;
       if (token) {
         localStorage.setItem("token", token);
-        login(response.data.user);
-        console.log("Login successful:", response.data);
+        login(token);
         navigate("/home");
       }
     } catch (error) {
