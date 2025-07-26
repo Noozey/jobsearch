@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -21,6 +21,10 @@ import {
   Users,
 } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { useUser } from "@/context/users";
+import { api } from "@/lib/axios";
+
+import type { User as people } from "@/types/types";
 
 const Home = () => {
   return (
@@ -73,15 +77,8 @@ const Home = () => {
 };
 
 const LeftSidebar = () => {
-  const user = {
-    name: "Alex Johnson",
-    email: "alex.johnson@email.com",
-    avatar: "",
-    posts: 142,
-    followers: 1205,
-    following: 389,
-  };
-
+  const { user } = useUser();
+  console.log(user);
   return (
     <div className="space-y-4 sticky top-20">
       <Card>
@@ -100,7 +97,7 @@ const LeftSidebar = () => {
             <h3 className="font-semibold text-lg">{user.name}</h3>
             <p className="text-sm text-muted-foreground mb-4">{user.email}</p>
 
-            <div className="flex gap-4 text-center w-full">
+            <div className="flex gap-4 text-center w-full items-center justify-center">
               <div>
                 <div className="font-semibold">{user.posts}</div>
                 <div className="text-xs text-muted-foreground">Posts</div>
@@ -331,36 +328,21 @@ const MainFeed = () => {
 
 const RightSidebar = () => {
   const [searchTerm, setSearchTerm] = useState("");
-  const [suggestedFriends] = useState([
-    {
-      id: 1,
-      name: "David Kim",
-      username: "@davidk",
-      mutualFriends: 5,
-      avatar: "",
-    },
-    {
-      id: 2,
-      name: "Lisa Park",
-      username: "@lisap",
-      mutualFriends: 3,
-      avatar: "",
-    },
-    {
-      id: 3,
-      name: "James Wilson",
-      username: "@jameswilson",
-      mutualFriends: 8,
-      avatar: "",
-    },
-    {
-      id: 4,
-      name: "Anna Martinez",
-      username: "@annam",
-      mutualFriends: 2,
-      avatar: "",
-    },
-  ]);
+  const [suggestedFriends, setSuggestedFriends] = useState<people[]>([]);
+  const { user } = useUser();
+
+  const fetchUserData = async () => {
+    try {
+      const allUsers = await api.get("/users");
+      setSuggestedFriends(allUsers.data.users);
+    } catch (err) {
+      console.error("Error fetching users", err);
+    }
+  };
+
+  useEffect(() => {
+    fetchUserData();
+  }, []);
 
   const [trendingTopics] = useState([
     { tag: "#ReactJS", posts: "12.5k posts" },
@@ -388,28 +370,29 @@ const RightSidebar = () => {
           />
 
           <div className="space-y-3">
-            {suggestedFriends.slice(0, 3).map((friend) => (
-              <div key={friend.id} className="flex items-center gap-3">
-                <Avatar className="w-8 h-8">
-                  <AvatarImage src={friend.avatar} />
-                  <AvatarFallback className="text-xs">
-                    {friend.name
-                      .split(" ")
-                      .map((n) => n[0])
-                      .join("")}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium truncate">{friend.name}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {friend.mutualFriends} mutual friends
-                  </p>
+            {suggestedFriends.map((friend) =>
+              user?.email !== friend.email ? (
+                <div key={friend.id} className="flex items-center gap-3">
+                  <Avatar className="w-8 h-8">
+                    <AvatarImage src={friend.avatar || "/default-avatar.png"} />
+                    <AvatarFallback className="text-xs">
+                      {friend.name
+                        .split(" ")
+                        .map((n) => n[0])
+                        .join("")}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">
+                      {friend.name}
+                    </p>
+                  </div>
+                  <Button size="sm" variant="outline">
+                    Add
+                  </Button>
                 </div>
-                <Button size="sm" variant="outline">
-                  Add
-                </Button>
-              </div>
-            ))}
+              ) : null,
+            )}
           </div>
 
           <Button variant="ghost" className="w-full text-sm">

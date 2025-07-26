@@ -5,13 +5,16 @@ import React, {
   PropsWithChildren,
 } from "react";
 import { jwtDecode } from "jwt-decode";
-import App from "@/App";
 import { api } from "@/lib/axios";
 
 // Define your User type
 type User = {
   name: string;
   email: string;
+  avatar: string;
+  posts: number;
+  followers: number;
+  following: number;
 };
 
 type UserContextType = {
@@ -42,16 +45,18 @@ type JWTPayload = {
 export const UserProvider = ({ children }: PropsWithChildren<object>) => {
   const [user, setUser] = useState<User | null>(null);
   const [isAuthenticate, setIsAuthenticate] = useState(false);
-  console.log(user);
+
   async function checkAuth() {
     const token = localStorage.getItem("token");
     if (token) {
       try {
         const res = await api.post("/auth/authenticate", { token });
-        const { exp, name, email } = res.data;
+        console.log(res);
+        const { exp, name, email, avatar, posts, followers, following } =
+          res.data;
 
         if (!exp || exp * 1000 > Date.now()) {
-          setUser({ name, email });
+          setUser({ name, email, avatar, posts, followers, following });
           setIsAuthenticate(true);
           const timeout = exp ? exp * 1000 - Date.now() : 0;
           const timer = setTimeout(() => logout(), timeout);
@@ -65,6 +70,7 @@ export const UserProvider = ({ children }: PropsWithChildren<object>) => {
       }
     }
   }
+
   useEffect(() => {
     checkAuth();
   }, []);
@@ -72,9 +78,9 @@ export const UserProvider = ({ children }: PropsWithChildren<object>) => {
   const login = (token: string) => {
     try {
       const decoded = jwtDecode<JWTPayload>(token);
-      const { name, email } = decoded;
+      const { name, email, avatar, posts, followers, following } = decoded;
       localStorage.setItem("token", token);
-      setUser({ name, email });
+      setUser({ name, email, avatar, posts, followers, following });
       setIsAuthenticate(true);
     } catch (error) {
       console.error("Login failed: Invalid token", error);
