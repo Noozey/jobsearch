@@ -10,6 +10,10 @@ const authRouter = Router();
 authRouter.post("/login", async (req, res) => {
   const { email, password } = req.body;
 
+  await client.connect();
+  const db = client.db("Auth");
+  const collection = db.collection("register");
+
   if (!email || !password) {
     return res.status(400).json({ error: "Email and password are required" });
   }
@@ -32,7 +36,15 @@ authRouter.post("/login", async (req, res) => {
     }
 
     const token = jwt.sign(
-      { userId: user._id, name: user.name, email: user.email },
+      {
+        userId: user._id,
+        name: user.name,
+        email: user.email,
+        avatar: user.avatar,
+        posts: user.posts,
+        followers: user.followers,
+        following: user.following,
+      },
       process.env.JWT_SECRET,
       { expiresIn: "1h" },
     );
@@ -68,7 +80,7 @@ authRouter.get("/register", async (req, res) => {
   }
 });
 
-authRouter.post("/", async (req, res) => {
+authRouter.post("/register", async (req, res) => {
   const { name, email, password } = req.body;
 
   if (!name || !email || !password) {
@@ -89,6 +101,10 @@ authRouter.post("/", async (req, res) => {
       name,
       email,
       password: hashedPassword,
+      avatar: "",
+      posts: 0,
+      followers: 0,
+      following: 0,
     };
 
     const result = await collection.insertOne(newUser);
@@ -107,8 +123,14 @@ authRouter.post("/", async (req, res) => {
 
 authRouter.post("/authenticate", (req, res) => {
   const { token } = req.body;
-  const verified = jwt.verify(token, secretOrPublicKey, options);
-  res.json(verified.payload);
+
+  try {
+    const verified = jwt.verify(token, process.env.JWT_SECRET);
+    res.json(verified);
+  } catch (error) {
+    console.error("Token verification failed:", error);
+    res.status(401).json({ error: "Invalid token" });
+  }
 });
 
 export { authRouter };

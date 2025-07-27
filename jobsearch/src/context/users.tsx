@@ -18,14 +18,21 @@ type User = {
 };
 
 type UserContextType = {
-  user: User | null;
+  user: User;
   login: (token: string) => void;
   logout: () => void;
   isAuthenticate: boolean;
 };
 
 export const UserContext = createContext<UserContextType>({
-  user: null,
+  user: {
+    name: "",
+    email: "",
+    avatar: "",
+    posts: 0,
+    followers: 0,
+    following: 0,
+  },
   login: () => {},
   logout: () => {},
   isAuthenticate: false,
@@ -43,7 +50,14 @@ type JWTPayload = {
 };
 
 export const UserProvider = ({ children }: PropsWithChildren<object>) => {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<User>({
+    name: "",
+    email: "",
+    avatar: "",
+    posts: 0,
+    followers: 0,
+    following: 0,
+  });
   const [isAuthenticate, setIsAuthenticate] = useState(false);
 
   async function checkAuth() {
@@ -79,16 +93,30 @@ export const UserProvider = ({ children }: PropsWithChildren<object>) => {
     try {
       const decoded = jwtDecode<JWTPayload>(token);
       const { name, email, avatar, posts, followers, following } = decoded;
-      localStorage.setItem("token", token);
-      setUser({ name, email, avatar, posts, followers, following });
+      setUser({
+        name: name || "",
+        email: email || "",
+        avatar: avatar || "",
+        posts: posts || 0,
+        followers: followers || 0,
+        following: following || 0,
+      });
       setIsAuthenticate(true);
+      localStorage.setItem("token", token);
     } catch (error) {
-      console.error("Login failed: Invalid token", error);
+      console.error("Failed to login", error);
     }
   };
 
   const logout = () => {
-    setUser(null);
+    setUser({
+      name: "",
+      email: "",
+      avatar: "",
+      posts: 0,
+      followers: 0,
+      following: 0,
+    });
     setIsAuthenticate(false);
     sessionStorage.removeItem("token");
   };

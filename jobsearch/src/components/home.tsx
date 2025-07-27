@@ -5,6 +5,15 @@ import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
@@ -31,7 +40,7 @@ const Home = () => {
     <div className={`min-h-screen`}>
       <nav className="flex justify-between items-center p-4 border-b border-border sticky top-0 bg-background/80 backdrop-blur-sm z-50">
         <div className="flex items-center gap-6">
-          <h1 className="text-xl font-bold text-primary">SocialHub</h1>
+          <h1 className="text-xl font-bold text-primary">JobSearch</h1>
           <ul className="flex gap-6 text-sm">
             <li className="flex items-center gap-2 text-primary cursor-pointer">
               <HomeIcon width={16} height={16} />
@@ -138,53 +147,58 @@ const LeftSidebar = () => {
   );
 };
 
+type Post = {
+  id: number;
+  author: string;
+  username: string;
+  time: string;
+  content: string;
+  likes: number;
+  comments: number;
+  shares: number;
+  avatar: string;
+};
+
 const MainFeed = () => {
   const [postText, setPostText] = useState("");
-  const [posts, setPosts] = useState([
-    {
-      id: 1,
-      author: "Sarah Chen",
-      username: "@sarahchen",
-      time: "2h ago",
-      content:
-        "Just finished an amazing React project! The new hooks make everything so much cleaner 🚀",
-      likes: 24,
-      comments: 8,
-      shares: 3,
-      avatar: "",
-    },
-    {
-      id: 2,
-      author: "Mike Rodriguez",
-      username: "@mikerod",
-      time: "4h ago",
-      content:
-        "Beautiful sunset at the beach today. Sometimes you need to step away from the code and enjoy nature 🌅",
-      likes: 56,
-      comments: 12,
-      shares: 7,
-      avatar: "",
-    },
-    {
-      id: 3,
-      author: "Emily Watson",
-      username: "@emilyw",
-      time: "6h ago",
-      content:
-        "New blog post is live! '10 Tips for Better Code Reviews' - link in my bio. What are your favorite code review practices?",
-      likes: 43,
-      comments: 18,
-      shares: 12,
-      avatar: "",
-    },
-  ]);
+  const [posts, setPosts] = useState<Post[]>([]);
+  const [searchData, setSearchData] = useState("");
 
+  const { user } = useUser();
+
+  // Fetch all posts
+  const getPost = async () => {
+    try {
+      const response = await api.get("/job/jobdetail");
+      setPosts(response.data.jobdetail);
+    } catch (err) {
+      console.error("Error fetching posts:", err);
+    }
+  };
+
+  // Search posts
+  const handleSearch = async () => {
+    try {
+      const response = await api.get("/job/jobdetail", {
+        params: { query: searchData },
+      });
+      setPosts(response.data.jobdetail);
+    } catch (err) {
+      console.error("Error during search:", err);
+    }
+  };
+
+  useEffect(() => {
+    getPost(); // Load all jobs initially
+  }, []);
+
+  // Handle new post creation
   const handlePost = () => {
     if (postText.trim()) {
-      const newPost = {
+      const newPost: Post = {
         id: posts.length + 1,
-        author: "Alex Johnson",
-        username: "@alexj",
+        author: user?.name ?? "Anonymous",
+        username: user?.name ?? "anonymous",
         time: "now",
         content: postText,
         likes: 0,
@@ -197,6 +211,7 @@ const MainFeed = () => {
     }
   };
 
+  // Handle like increment
   const handleLike = (postId: number) => {
     setPosts(
       posts.map((post) =>
@@ -204,7 +219,6 @@ const MainFeed = () => {
       ),
     );
   };
-
   return (
     <div className="space-y-6">
       {/* Search Bar */}
@@ -214,8 +228,13 @@ const MainFeed = () => {
             <Input
               placeholder="Search posts, people, or topics..."
               className="flex-1"
+              value={searchData}
+              onChange={(e) => {
+                setSearchData(e.target.value);
+                handleSearch();
+              }}
             />
-            <Button variant="outline" size="icon">
+            <Button variant="outline" size="icon" onClick={handleSearch}>
               <Search size={16} />
             </Button>
           </div>
@@ -224,8 +243,9 @@ const MainFeed = () => {
 
       {/* Create Post */}
       <Card>
-        <CardContent className="p-4">
-          <div className="space-y-4">
+        <h3 className="text-lg font-semibold px-4">Create a Post</h3>
+        <CardContent className="px-4">
+          <div>
             <Textarea
               placeholder="What's on your mind?"
               value={postText}
@@ -233,16 +253,8 @@ const MainFeed = () => {
               className="min-h-20 resize-none"
             />
             <div className="flex justify-between items-center">
-              <div className="flex gap-2">
-                <Button variant="ghost" size="sm">
-                  📷 Photo
-                </Button>
-                <Button variant="ghost" size="sm">
-                  🎥 Video
-                </Button>
-                <Button variant="ghost" size="sm">
-                  📍 Location
-                </Button>
+              <div className="flex gap-2 py-4">
+                <PostVisibilityDropdown />
               </div>
               <Button
                 onClick={handlePost}
@@ -435,5 +447,31 @@ const RightSidebar = () => {
     </div>
   );
 };
+
+export function PostVisibilityDropdown() {
+  const [position, setPosition] = useState("ReactJS");
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="outline">Job Topic</Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent className="w-56">
+        <DropdownMenuLabel>Panel Position</DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        <DropdownMenuRadioGroup value={position} onValueChange={setPosition}>
+          <DropdownMenuRadioItem value="ReactJs">ReactJS</DropdownMenuRadioItem>
+          <DropdownMenuRadioItem value="NodeJs">NodeJS</DropdownMenuRadioItem>
+          <DropdownMenuRadioItem value="Python">Python</DropdownMenuRadioItem>
+          <DropdownMenuRadioItem value="JavaScript">
+            JavaScript
+          </DropdownMenuRadioItem>
+          <DropdownMenuRadioItem value="Java">Java</DropdownMenuRadioItem>
+          <DropdownMenuRadioItem value="C++">C++</DropdownMenuRadioItem>
+        </DropdownMenuRadioGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
 
 export default Home;
