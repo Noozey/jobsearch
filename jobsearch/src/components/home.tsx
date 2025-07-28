@@ -224,14 +224,20 @@ const MainFeed = () => {
       {/* Search Bar */}
       <Card>
         <CardContent className="p-4">
-          <div className="flex gap-2">
+          <div
+            className="flex gap-2"
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                handleSearch();
+              }
+            }}
+          >
             <Input
               placeholder="Search posts, people, or topics..."
               className="flex-1"
               value={searchData}
               onChange={(e) => {
                 setSearchData(e.target.value);
-                handleSearch();
               }}
             />
             <Button variant="outline" size="icon" onClick={handleSearch}>
