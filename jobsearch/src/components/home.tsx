@@ -18,10 +18,6 @@ import {
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   Search,
-  Heart,
-  MessageCircle,
-  Share,
-  MoreHorizontal,
   UserPlus,
   Bell,
   Settings,
@@ -148,25 +144,19 @@ const LeftSidebar = () => {
 };
 
 type Post = {
-  id: number;
   author: string;
   username: string;
-  time: string;
   content: string;
-  likes: number;
-  comments: number;
-  shares: number;
+  jobType: string;
   avatar: string;
 };
 
 const MainFeed = () => {
-  const [postText, setPostText] = useState("");
+  const [postData, setPostData] = useState("");
   const [posts, setPosts] = useState<Post[]>([]);
   const [searchData, setSearchData] = useState("");
-
+  const [jobType, setJobType] = useState("ReactJS");
   const { user } = useUser();
-
-  // Fetch all posts
   const getPost = async () => {
     try {
       const response = await api.get("/job/jobdetail");
@@ -176,7 +166,19 @@ const MainFeed = () => {
     }
   };
 
-  // Search posts
+  const handlePost = async () => {
+    if (postData === "") return;
+    try {
+      await api.post("/job/create", {
+        postData,
+        user,
+        jobType,
+      });
+    } catch (err) {
+      console.log(err);
+    }
+  };
+
   const handleSearch = async () => {
     try {
       const response = await api.get("/job/jobdetail", {
@@ -189,36 +191,20 @@ const MainFeed = () => {
   };
 
   useEffect(() => {
-    getPost(); // Load all jobs initially
-  }, []);
+    let interval: NodeJS.Timeout | null = null;
 
-  // Handle new post creation
-  const handlePost = () => {
-    if (postText.trim()) {
-      const newPost: Post = {
-        id: posts.length + 1,
-        author: user?.name ?? "Anonymous",
-        username: user?.name ?? "anonymous",
-        time: "now",
-        content: postText,
-        likes: 0,
-        comments: 0,
-        shares: 0,
-        avatar: "",
-      };
-      setPosts([newPost, ...posts]);
-      setPostText("");
+    if (!searchData) {
+      getPost();
+      interval = setInterval(() => {
+        getPost();
+      }, 5000);
     }
-  };
 
-  // Handle like increment
-  const handleLike = (postId: number) => {
-    setPosts(
-      posts.map((post) =>
-        post.id === postId ? { ...post, likes: post.likes + 1 } : post,
-      ),
-    );
-  };
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [searchData]);
+
   return (
     <div className="space-y-6">
       {/* Search Bar */}
@@ -238,6 +224,7 @@ const MainFeed = () => {
               value={searchData}
               onChange={(e) => {
                 setSearchData(e.target.value);
+                handleSearch();
               }}
             />
             <Button variant="outline" size="icon" onClick={handleSearch}>
@@ -254,21 +241,15 @@ const MainFeed = () => {
           <div>
             <Textarea
               placeholder="What's on your mind?"
-              value={postText}
-              onChange={(e) => setPostText(e.target.value)}
+              value={postData}
+              onChange={(e) => setPostData(e.target.value)}
               className="min-h-20 resize-none"
             />
             <div className="flex justify-between items-center">
-              <div className="flex gap-2 py-4">
-                <PostVisibilityDropdown />
+              <div className="flex gap-2 py-4 items-center justify-center">
+                <PostVisibilityDropdown setJobType={setJobType} /> {jobType}
               </div>
-              <Button
-                onClick={handlePost}
-                disabled={!postText.trim()}
-                className="px-6"
-              >
-                Post
-              </Button>
+              <Button onClick={handlePost}>Post</Button>
             </div>
           </div>
         </CardContent>
@@ -276,69 +257,48 @@ const MainFeed = () => {
 
       {/* Posts Feed */}
       <div className="space-y-4">
-        {posts.map((post) => (
-          <Card key={post.id}>
-            <CardContent className="p-4">
-              <div className="flex items-start gap-3">
-                <Avatar>
-                  <AvatarImage src={post.avatar} />
-                  <AvatarFallback>
-                    {post.author
-                      .split(" ")
-                      .map((n) => n[0])
-                      .join("")}
-                  </AvatarFallback>
-                </Avatar>
-
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-2">
-                    <h4 className="font-semibold">{post.author}</h4>
-                    <span className="text-sm text-muted-foreground">
-                      {post.username}
-                    </span>
-                    <span className="text-sm text-muted-foreground">•</span>
-                    <span className="text-sm text-muted-foreground">
-                      {post.time}
-                    </span>
-                    <Button variant="ghost" size="sm" className="ml-auto">
-                      <MoreHorizontal size={16} />
-                    </Button>
-                  </div>
-
-                  <p className="text-sm mb-3 leading-relaxed">{post.content}</p>
-
-                  <div className="flex items-center gap-6 text-muted-foreground">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="flex items-center gap-2 text-muted-foreground hover:text-red-500"
-                      onClick={() => handleLike(post.id)}
-                    >
-                      <Heart size={16} />
-                      {post.likes}
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="flex items-center gap-2"
-                    >
-                      <MessageCircle size={16} />
-                      {post.comments}
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="flex items-center gap-2"
-                    >
-                      <Share size={16} />
-                      {post.shares}
-                    </Button>
-                  </div>
-                </div>
-              </div>
+        {posts.length === 0 ? (
+          <Card>
+            <CardContent className="p-6 text-center text-muted-foreground">
+              No posts found. Try creating a post or adjusting your search.
             </CardContent>
           </Card>
-        ))}
+        ) : (
+          posts.map((post) => (
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-start gap-3">
+                  <Avatar>
+                    <AvatarImage src={post.avatar} />
+                    <AvatarFallback>
+                      {post.author
+                        .split(" ")
+                        .map((n) => n[0])
+                        .join("")}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-2">
+                      <h4 className="font-semibold">{post.author}</h4>
+                    </div>
+                    <p className="text-sm mb-3 leading-relaxed">
+                      {post.content}
+                    </p>
+                    <div className="border-t border-gray-100 pt-3 mb-3 w-full flex justify-between items-center">
+                      <div>
+                        <span className="text-sm uppercase tracking-wide font-medium">
+                          Position
+                        </span>
+                        <p className="text-sm mt-1">{post.jobType}</p>
+                      </div>
+                      <Button>Apply</Button>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))
+        )}
       </div>
     </div>
   );
@@ -351,7 +311,8 @@ const RightSidebar = () => {
 
   const fetchUserData = async () => {
     try {
-      const allUsers = await api.get("/users");
+      const allUsers = await api.get("/users/data");
+      console.log(allUsers);
       setSuggestedFriends(allUsers.data.users);
     } catch (err) {
       console.error("Error fetching users", err);
@@ -361,6 +322,8 @@ const RightSidebar = () => {
   useEffect(() => {
     fetchUserData();
   }, []);
+
+  console.log(suggestedFriends);
 
   const [trendingTopics] = useState([
     { tag: "#ReactJS", posts: "12.5k posts" },
@@ -380,6 +343,7 @@ const RightSidebar = () => {
             Add Friends
           </CardTitle>
         </CardHeader>
+
         <CardContent className="space-y-4">
           <Input
             placeholder="Search by name or email"
@@ -388,28 +352,37 @@ const RightSidebar = () => {
           />
 
           <div className="space-y-3">
-            {suggestedFriends.map((friend) =>
-              user?.email !== friend.email ? (
-                <div key={friend.id} className="flex items-center gap-3">
-                  <Avatar className="w-8 h-8">
-                    <AvatarImage src={friend.avatar || "/default-avatar.png"} />
-                    <AvatarFallback className="text-xs">
-                      {friend.name
-                        .split(" ")
-                        .map((n) => n[0])
-                        .join("")}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">
-                      {friend.name}
-                    </p>
+            {suggestedFriends.filter((f) => f.email !== user?.email).length ===
+            0 ? (
+              <p className="text-sm text-muted-foreground text-center">
+                No friend suggestions available.
+              </p>
+            ) : (
+              suggestedFriends.map((friend) =>
+                user?.email !== friend.email ? (
+                  <div className="flex items-center gap-3">
+                    <Avatar className="w-8 h-8">
+                      <AvatarImage
+                        src={friend.avatar || "/default-avatar.png"}
+                      />
+                      <AvatarFallback className="text-xs">
+                        {friend.name
+                          .split(" ")
+                          .map((n) => n[0])
+                          .join("")}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">
+                        {friend.name}
+                      </p>
+                    </div>
+                    <Button size="sm" variant="outline">
+                      follow
+                    </Button>
                   </div>
-                  <Button size="sm" variant="outline">
-                    Add
-                  </Button>
-                </div>
-              ) : null,
+                ) : null,
+              )
             )}
           </div>
 
@@ -454,9 +427,11 @@ const RightSidebar = () => {
   );
 };
 
-export function PostVisibilityDropdown() {
-  const [position, setPosition] = useState("ReactJS");
-
+export function PostVisibilityDropdown({
+  setJobType,
+}: {
+  setJobType: (jobType: string) => void;
+}) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -465,7 +440,7 @@ export function PostVisibilityDropdown() {
       <DropdownMenuContent className="w-56">
         <DropdownMenuLabel>Panel Position</DropdownMenuLabel>
         <DropdownMenuSeparator />
-        <DropdownMenuRadioGroup value={position} onValueChange={setPosition}>
+        <DropdownMenuRadioGroup onValueChange={setJobType}>
           <DropdownMenuRadioItem value="ReactJs">ReactJS</DropdownMenuRadioItem>
           <DropdownMenuRadioItem value="NodeJs">NodeJS</DropdownMenuRadioItem>
           <DropdownMenuRadioItem value="Python">Python</DropdownMenuRadioItem>

@@ -2,7 +2,7 @@ import { Router } from "express";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
-import client from "../database/MangoDb.js";
+import connectToMongo from "../database/MangoDb.js";
 
 dotenv.config();
 const authRouter = Router();
@@ -10,16 +10,12 @@ const authRouter = Router();
 authRouter.post("/login", async (req, res) => {
   const { email, password } = req.body;
 
-  await client.connect();
-  const db = client.db("Auth");
-  const collection = db.collection("register");
-
   if (!email || !password) {
-    return res.status(400).json({ error: "Email and password are required" });
+    return res.status(400).json({ error: "Email and pashsword are required" });
   }
 
   try {
-    await client.connect();
+    const client = await connectToMongo();
     const db = client.db("Auth");
     const collection = db.collection("register");
 
@@ -55,14 +51,12 @@ authRouter.post("/login", async (req, res) => {
   } catch (err) {
     console.error("Login error:", err);
     res.status(500).json({ error: "Internal server error" });
-  } finally {
-    await client.close();
   }
 });
 
 authRouter.get("/register", async (req, res) => {
   try {
-    await client.connect();
+    const client = await connectToMongo();
     const db = client.db("Auth");
     const collection = db.collection("register");
 
@@ -75,8 +69,6 @@ authRouter.get("/register", async (req, res) => {
   } catch (err) {
     console.error("Error fetching users:", err);
     res.status(500).json({ error: "Internal server error" });
-  } finally {
-    await client.close();
   }
 });
 
@@ -90,7 +82,7 @@ authRouter.post("/register", async (req, res) => {
   }
 
   try {
-    await client.connect();
+    const client = await connectToMongo();
     const db = client.db("Auth");
     const collection = db.collection("register");
 
@@ -116,8 +108,6 @@ authRouter.post("/register", async (req, res) => {
   } catch (err) {
     console.error("Error registering user:", err);
     res.status(500).json({ error: "Internal server error" });
-  } finally {
-    await client.close();
   }
 });
 

@@ -1,8 +1,7 @@
 import { MongoClient } from "mongodb";
 import dotenv from "dotenv";
-import e from "express";
 
-dotenv.config(); // Load variables from .env file
+dotenv.config();
 
 const uri = process.env.MONGODB_URI;
 
@@ -12,4 +11,15 @@ if (!uri) {
 
 const client = new MongoClient(uri);
 
-export default client;
+let isConnected = false;
+
+const connectToMongo = async () => {
+  if (!isConnected) {
+    await client.connect();
+    isConnected = true;
+    console.log("✅ Connected to MongoDB");
+  }
+  return client;
+};
+
+export default connectToMongo;
