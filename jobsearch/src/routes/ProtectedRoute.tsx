@@ -1,17 +1,13 @@
-import { useUser } from "@/context/users";
 import { Navigate } from "react-router-dom";
 
-type ProtectedRouteProps = {
-  children: React.ReactNode;
-};
+const ProtectedRoute = ({ children }) => {
+  const isAuthenticated = !!localStorage.getItem("token");
 
-const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
-  const { isAuthenticate } = useUser();
-  console.log(isAuthenticate);
-  if (!isAuthenticate) {
+  if (!isAuthenticated) {
     return <Navigate to="/" />;
   }
-  return <>{children}</>;
+
+  return children;
 };
 
 export default ProtectedRoute;
