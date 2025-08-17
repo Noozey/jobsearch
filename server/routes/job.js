@@ -45,7 +45,8 @@ jobRouter.get("/jobdetail", async (req, res) => {
       };
     }
 
-    const jobdetail = await collection.find(filter).toArray();
+    const jobdetail = await collection.find(filter).sort({ _id: -1 }).toArray();
+
     res.status(200).json({ jobdetail });
   } catch (error) {
     console.error("Error fetching job details:", error);

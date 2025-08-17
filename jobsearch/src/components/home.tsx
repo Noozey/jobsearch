@@ -28,8 +28,6 @@ const Home = () => {
     <div className={`min-h-screen`}>
       <NavBar />
 
-      {/* Mobile menu button */}
-
       <div className="max-w-7xl mx-auto p-2 sm:p-4 lg:p-6">
         {/* Desktop Layout */}
         <div className="hidden lg:grid lg:grid-cols-12 gap-6">

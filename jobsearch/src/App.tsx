@@ -20,7 +20,7 @@ const App = () => {
         />
 
         <Route
-          path="/friend"
+          path="/friends"
           element={
             <ProtectedRoute>
               <FriedsTab />
