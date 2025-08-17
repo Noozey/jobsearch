@@ -16,66 +16,48 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import {
-  Search,
-  UserPlus,
-  Bell,
-  Settings,
-  Home as HomeIcon,
-  User,
-  Users,
-} from "lucide-react";
-import { ThemeToggle } from "@/components/theme-toggle";
+import { Search, UserPlus, Bell } from "lucide-react";
 import { useUser } from "@/context/users";
 import { api } from "@/lib/axios";
 
 import type { User as people } from "@/types/types";
+import { NavBar } from "./navbar";
 
 const Home = () => {
   return (
     <div className={`min-h-screen`}>
-      <nav className="flex justify-between items-center p-4 border-b border-border sticky top-0 bg-background/80 backdrop-blur-sm z-50">
-        <div className="flex items-center gap-6">
-          <h1 className="text-xl font-bold text-primary">JobSearch</h1>
-          <ul className="flex gap-6 text-sm">
-            <li className="flex items-center gap-2 text-primary cursor-pointer">
-              <HomeIcon width={16} height={16} />
-              Home
-            </li>
-            <li className="flex items-center gap-2 text-muted-foreground hover:text-foreground cursor-pointer">
-              <Users size={16} />
-              Friends
-            </li>
-            <li className="flex items-center gap-2 text-muted-foreground hover:text-foreground cursor-pointer">
-              <User size={16} />
-              Profile
-            </li>
-          </ul>
+      <NavBar />
+
+      {/* Mobile menu button */}
+
+      <div className="max-w-7xl mx-auto p-2 sm:p-4 lg:p-6">
+        {/* Desktop Layout */}
+        <div className="hidden lg:grid lg:grid-cols-12 gap-6">
+          <section className="col-span-3">
+            <LeftSidebar />
+          </section>
+          <section className="col-span-6">
+            <MainFeed />
+          </section>
+          <section className="col-span-3">
+            <RightSidebar />
+          </section>
         </div>
 
-        <div className="flex items-center gap-2">
-          <Button variant="ghost" size="sm">
-            <Bell size={16} />
-          </Button>
-          <Button variant="ghost" size="sm">
-            <Settings size={16} />
-          </Button>
-          <ThemeToggle />
+        {/* Tablet Layout */}
+        <div className="hidden md:grid lg:hidden md:grid-cols-3 gap-4">
+          <section className="col-span-2">
+            <MainFeed />
+          </section>
+          <section className="col-span-1">
+            <RightSidebar />
+          </section>
         </div>
-      </nav>
 
-      <div className="grid grid-cols-12 gap-6 max-w-7xl mx-auto p-4">
-        <section className="col-span-3">
-          <LeftSidebar />
-        </section>
-
-        <section className="col-span-6">
+        {/* Mobile Layout */}
+        <div className="md:hidden">
           <MainFeed />
-        </section>
-
-        <section className="col-span-3">
-          <RightSidebar />
-        </section>
+        </div>
       </div>
     </div>
   );
