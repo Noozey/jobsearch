@@ -1,4 +1,10 @@
-import { createContext, useContext, useState, type ReactNode } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  type ReactNode,
+} from "react";
 
 export type Theme = "light" | "dark";
 export const DEFAULT_THEME: Theme = "dark";
@@ -28,12 +34,19 @@ export function ThemeProvider({
 }: ThemeProviderProps) {
   const [theme, _setTheme] = useState(() => loadTheme(initialTheme));
 
-  function setTheme(theme: Theme) {
-    _setTheme(theme);
+  useEffect(() => {
+    setRootTheme(theme);
+  }, [theme]);
 
+  function setRootTheme(theme: Theme) {
     const root = document.documentElement;
     root.classList.remove("light", "dark");
     root.classList.add(theme);
+  }
+
+  function setTheme(theme: Theme) {
+    _setTheme(theme);
+    setRootTheme(theme);
     saveTheme(theme);
   }
 

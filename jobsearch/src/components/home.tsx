@@ -63,43 +63,76 @@ const Home = () => {
 
 const LeftSidebar = () => {
   const { user } = useUser();
-  console.log(user);
+  const [userData, setUserData] = useState<any>();
+
+  const getUser = async () => {
+    if (!user?._id) return;
+    try {
+      const res = await api.get("/users", {
+        params: { id: user._id },
+      });
+      console.log(res.data);
+      setUserData(res.data);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  useEffect(() => {
+    if (!user?._id) return;
+    getUser();
+    const interval: ReturnType<typeof setInterval> = setInterval(() => {
+      getUser();
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [user]);
+
+  console.log(userData);
+
+  if (!userData) {
+    return <div>loading</div>;
+  }
+
+  // Calculate dynamic counts from the actual data arrays
+  const followersCount = userData.followersData?.length || 0;
+  const followingCount = userData.followingData?.length || 0;
+  const postsCount = userData.posts || 0;
+
   return (
     <div className="space-y-4 sticky top-20">
       <Card>
         <CardContent className="p-6">
           <div className="flex flex-col items-center text-center">
             <Avatar className="w-20 h-20 mb-4">
-              <AvatarImage src={user.avatar} />
+              <AvatarImage src={userData.avatar} />
               <AvatarFallback className="text-lg">
-                {user.name
+                {userData.name
                   .split(" ")
                   .map((n) => n[0])
                   .join("")}
               </AvatarFallback>
             </Avatar>
-
-            <h3 className="font-semibold text-lg">{user.name}</h3>
-            <p className="text-sm text-muted-foreground mb-4">{user.email}</p>
-
+            <h3 className="font-semibold text-lg">{userData.name}</h3>
+            <p className="text-sm text-muted-foreground mb-4">
+              {userData.email}
+            </p>
             <div className="flex gap-4 text-center w-full items-center justify-center">
               <div>
-                <div className="font-semibold">{user.posts}</div>
+                <div className="font-semibold">{postsCount}</div>
                 <div className="text-xs text-muted-foreground">Posts</div>
               </div>
               <div>
-                <div className="font-semibold">{user.followers}</div>
+                <div className="font-semibold">{followersCount}</div>
                 <div className="text-xs text-muted-foreground">Followers</div>
               </div>
               <div>
-                <div className="font-semibold">{user.following}</div>
+                <div className="font-semibold">{followingCount}</div>
                 <div className="text-xs text-muted-foreground">Following</div>
               </div>
             </div>
           </div>
         </CardContent>
       </Card>
-
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Quick Stats</CardTitle>
@@ -115,20 +148,20 @@ const LeftSidebar = () => {
           </div>
           <div className="flex justify-between">
             <span className="text-sm">New Followers</span>
-            <Badge variant="secondary">+15</Badge>
+            <Badge variant="secondary">+{followersCount}</Badge>
           </div>
         </CardContent>
       </Card>
     </div>
   );
 };
-
 type Post = {
   author: string;
   username: string;
   content: string;
   jobType: string;
   avatar: string;
+  userId: string;
 };
 
 const MainFeed = () => {
@@ -137,6 +170,7 @@ const MainFeed = () => {
   const [searchData, setSearchData] = useState("");
   const [jobType, setJobType] = useState("ReactJS");
   const { user } = useUser();
+
   const getPost = async () => {
     try {
       const response = await api.get("/job/jobdetail");
@@ -168,6 +202,21 @@ const MainFeed = () => {
     } catch (err) {
       console.error("Error during search:", err);
     }
+  };
+
+  const handleApply = async (value: string) => {
+    console.log(user._id);
+    await api
+      .post("users/apply", {
+        sendReqId: user._id,
+        userId: value,
+      })
+      .then((res) => {
+        console.log(res.data);
+      })
+      .catch((err) => {
+        console.error("Error sending ApplyData:", err);
+      });
   };
 
   useEffect(() => {
@@ -271,7 +320,13 @@ const MainFeed = () => {
                         </span>
                         <p className="text-sm mt-1">{post.jobType}</p>
                       </div>
-                      <Button>Apply</Button>
+                      <Button
+                        onClick={() => {
+                          handleApply(post.userId);
+                        }}
+                      >
+                        Apply
+                      </Button>
                     </div>
                   </div>
                 </div>

@@ -1,25 +1,32 @@
 import { Router } from "express";
 import connectToMongo from "../database/MangoDb.js";
+import { ObjectId } from "mongodb";
 
 const jobRouter = Router();
 
 jobRouter.post("/create", async (req, res) => {
   const { postData, user, jobType } = req.body;
-  console.log(postData, user);
 
   try {
     const client = await connectToMongo();
     const db = client.db("Auth");
     const collection = db.collection("jobdata");
+    const collectionTwo = db.collection("register");
 
     const data = {
       content: postData,
       author: user.name,
       avatar: user.avatar,
       username: user.name,
+      userId: user._id,
       jobType,
     };
     await collection.insertOne(data);
+
+    await collectionTwo.updateOne(
+      { _id: new ObjectId(user._id) },
+      { $inc: { posts: 1 } },
+    );
   } catch (err) {
     console.log(err);
   }

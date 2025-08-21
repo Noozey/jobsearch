@@ -1,7 +1,7 @@
 import { ThemeToggle } from "@/components/theme-toggle";
 import {
   Bell,
-  Settings,
+  LogOut as Out,
   Home as HomeIcon,
   User,
   Users,
@@ -9,9 +9,11 @@ import {
 } from "lucide-react";
 import { Button } from "./ui/button";
 import { useState } from "react";
+import { useUser } from "@/context/users";
 
 function NavBar() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const { logout } = useUser();
 
   return (
     <nav className="flex justify-between items-center p-4 border-b border-border sticky top-0 bg-background/80 backdrop-blur-sm z-50">
@@ -30,7 +32,7 @@ function NavBar() {
           </li>
           <li className="flex items-center gap-2 text-muted-foreground hover:text-foreground cursor-pointer">
             <User size={16} />
-            Profile
+            <a href="/apply">Apply</a>
           </li>
         </ul>
 
@@ -42,8 +44,8 @@ function NavBar() {
         <Button variant="ghost" size="sm">
           <Bell size={16} />
         </Button>
-        <Button variant="ghost" size="sm">
-          <Settings size={16} />
+        <Button variant="ghost" size="sm" onClick={() => logout()}>
+          <Out size={16} />
         </Button>
         <ThemeToggle />
       </div>

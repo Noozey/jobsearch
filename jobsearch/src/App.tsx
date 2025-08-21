@@ -5,6 +5,7 @@ import Home from "./components/home";
 import ProtectedRoute from "./routes/ProtectedRoute";
 import PublicRoute from "./routes/PublicRoute";
 import { FriedsTab } from "./components/Friends";
+import Apply from "./components/apply";
 
 const App = () => {
   return (
@@ -18,7 +19,6 @@ const App = () => {
             </ProtectedRoute>
           }
         />
-
         <Route
           path="/friends"
           element={
@@ -26,8 +26,15 @@ const App = () => {
               <FriedsTab />
             </ProtectedRoute>
           }
+        />{" "}
+        <Route
+          path="/apply"
+          element={
+            <ProtectedRoute>
+              <Apply />
+            </ProtectedRoute>
+          }
         />
-
         <Route
           path="/"
           element={

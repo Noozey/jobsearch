@@ -97,6 +97,9 @@ authRouter.post("/register", async (req, res) => {
       posts: 0,
       followers: 0,
       following: 0,
+      apply: {},
+      followerList: {},
+      followingList: {},
     };
 
     const result = await collection.insertOne(newUser);
@@ -116,6 +119,7 @@ authRouter.post("/authenticate", (req, res) => {
 
   try {
     const verified = jwt.verify(token, process.env.JWT_SECRET);
+
     res.json(verified);
   } catch (error) {
     console.error("Token verification failed:", error);

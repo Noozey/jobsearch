@@ -9,10 +9,12 @@ import { api } from "@/lib/axios";
 
 // Define your User type
 type User = {
+  _id: string;
   name: string;
   email: string;
   avatar: string;
   posts: number;
+  apply: number;
   followers: number;
   following: number;
 };
@@ -26,10 +28,12 @@ type UserContextType = {
 
 export const UserContext = createContext<UserContextType>({
   user: {
+    _id: "",
     name: "",
     email: "",
     avatar: "",
     posts: 0,
+    apply: 0,
     followers: 0,
     following: 0,
   },
@@ -51,13 +55,16 @@ type JWTPayload = {
 
 export const UserProvider = ({ children }: PropsWithChildren<object>) => {
   const [user, setUser] = useState<User>({
+    _id: "",
     name: "",
     email: "",
     avatar: "",
     posts: 0,
+    apply: 0,
     followers: 0,
     following: 0,
   });
+  console.log("user", user);
   const [isAuthenticate, setIsAuthenticate] = useState(false);
 
   async function checkAuth() {
@@ -65,12 +72,30 @@ export const UserProvider = ({ children }: PropsWithChildren<object>) => {
     if (token) {
       try {
         const res = await api.post("/auth/authenticate", { token });
-        console.log(res);
-        const { exp, name, email, avatar, posts, followers, following } =
-          res.data;
+
+        const {
+          userId,
+          exp,
+          name,
+          email,
+          avatar,
+          posts,
+          apply,
+          followers,
+          following,
+        } = res.data;
 
         if (!exp || exp * 1000 > Date.now()) {
-          setUser({ name, email, avatar, posts, followers, following });
+          setUser({
+            _id: userId,
+            name,
+            email,
+            avatar,
+            posts,
+            apply,
+            followers,
+            following,
+          });
           setIsAuthenticate(true);
           const timeout = exp ? exp * 1000 - Date.now() : 0;
           const timer = setTimeout(() => logout(), timeout);
@@ -92,12 +117,24 @@ export const UserProvider = ({ children }: PropsWithChildren<object>) => {
   const login = (token: string) => {
     try {
       const decoded = jwtDecode<JWTPayload>(token);
-      const { name, email, avatar, posts, followers, following } = decoded;
+
+      const {
+        userId,
+        name,
+        email,
+        avatar,
+        posts,
+        apply,
+        followers,
+        following,
+      } = decoded;
       setUser({
+        _id: userId || "",
         name: name || "",
         email: email || "",
         avatar: avatar || "",
         posts: posts || 0,
+        apply: apply || 0,
         followers: followers || 0,
         following: following || 0,
       });
@@ -110,15 +147,18 @@ export const UserProvider = ({ children }: PropsWithChildren<object>) => {
 
   const logout = () => {
     setUser({
+      _id: "",
       name: "",
       email: "",
       avatar: "",
       posts: 0,
+      apply: 0,
       followers: 0,
       following: 0,
     });
     setIsAuthenticate(false);
-    sessionStorage.removeItem("token");
+    localStorage.removeItem("token");
+    window.location.href = "/";
   };
 
   return (
