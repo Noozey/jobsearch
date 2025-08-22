@@ -6,6 +6,8 @@ import ProtectedRoute from "./routes/ProtectedRoute";
 import PublicRoute from "./routes/PublicRoute";
 import { FriedsTab } from "./components/Friends";
 import Apply from "./components/apply";
+import { Profile } from "./components/profile";
+import { Professionals } from "./components/searchProfile";
 
 const App = () => {
   return (
@@ -26,7 +28,23 @@ const App = () => {
               <FriedsTab />
             </ProtectedRoute>
           }
-        />{" "}
+        />
+        <Route
+          path="/profile"
+          element={
+            <ProtectedRoute>
+              <Profile />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/professionals"
+          element={
+            <ProtectedRoute>
+              <Professionals />
+            </ProtectedRoute>
+          }
+        />
         <Route
           path="/apply"
           element={

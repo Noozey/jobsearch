@@ -2,6 +2,7 @@
 import { Router } from "express";
 import connectToMongo from "../database/MangoDb.js";
 import { ObjectId } from "mongodb";
+import bcrypt from "bcrypt";
 
 const userRouter = Router();
 
@@ -187,8 +188,6 @@ userRouter.post("/accept-application", async (req, res) => {
           },
           { session },
         );
-
-        // No need to update static counts - we use dynamic counts now
       });
 
       res.json({ message: "Application accepted successfully" });
@@ -229,6 +228,182 @@ userRouter.post("/reject-application", async (req, res) => {
   } catch (err) {
     console.error("Error rejecting application:", err);
     res.status(500).json({ error: "Server error occurred" });
+  }
+});
+
+userRouter.put("/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, email, avatar, bio, skills, password, currentPassword } =
+      req.body;
+
+    // Validate user ID format
+    if (!ObjectId.isValid(id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid user ID format",
+      });
+    }
+
+    const client = await connectToMongo();
+    const db = client.db("Auth");
+    const collection = db.collection("register");
+
+    // Check if user exists
+    const existingUser = await collection.findOne({ _id: new ObjectId(id) });
+    if (!existingUser) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    // Prepare update object - only add fields that are not empty
+    const updateData = {};
+    let hasUpdates = false;
+
+    // Helper function to check if value is not empty
+    const isNotEmpty = (value) => {
+      if (value === null || value === undefined) return false;
+      if (typeof value === "string") return value.trim().length > 0;
+      if (Array.isArray(value)) return value.length > 0;
+      return true;
+    };
+
+    // Update name if provided and not empty
+    if (isNotEmpty(name)) {
+      updateData.name = name.trim();
+      hasUpdates = true;
+    }
+
+    // Update email if provided and not empty
+    if (isNotEmpty(email)) {
+      const emailLower = email.toLowerCase().trim();
+
+      // Check if email is already taken by another user
+      const emailExists = await collection.findOne({
+        email: emailLower,
+        _id: { $ne: new ObjectId(id) },
+      });
+
+      if (emailExists) {
+        return res.status(400).json({
+          success: false,
+          message: "Email is already taken by another user",
+        });
+      }
+
+      updateData.email = emailLower;
+      hasUpdates = true;
+    }
+
+    // Update avatar if provided and not empty
+    if (isNotEmpty(avatar)) {
+      updateData.avatar = avatar.trim();
+      hasUpdates = true;
+    }
+
+    // Update bio if provided and not empty
+    if (isNotEmpty(bio)) {
+      updateData.bio = bio.trim();
+      hasUpdates = true;
+    }
+
+    // Update skills if provided and not empty
+    if (Array.isArray(skills) && skills.length > 0) {
+      // Filter out empty skills and remove duplicates
+      const validSkills = [
+        ...new Set(
+          skills
+            .filter((skill) => isNotEmpty(skill))
+            .map((skill) => skill.trim()),
+        ),
+      ];
+
+      if (validSkills.length > 0) {
+        updateData.skills = validSkills;
+        hasUpdates = true;
+      }
+    }
+
+    // Handle password update if both currentPassword and password are provided
+    if (isNotEmpty(password) && isNotEmpty(currentPassword)) {
+      // Verify current password
+      const isCurrentPasswordValid = await bcrypt.compare(
+        currentPassword,
+        existingUser.password,
+      );
+
+      if (!isCurrentPasswordValid) {
+        return res.status(400).json({
+          success: false,
+          message: "Current password is incorrect",
+        });
+      }
+
+      // Validate new password strength
+      if (password.trim().length < 6) {
+        return res.status(400).json({
+          success: false,
+          message: "New password must be at least 6 characters long",
+        });
+      }
+
+      // Hash new password
+      const saltRounds = 10;
+      const hashedPassword = await bcrypt.hash(password.trim(), saltRounds);
+      updateData.password = hashedPassword;
+      hasUpdates = true;
+    }
+
+    // If no valid updates were provided
+    if (!hasUpdates) {
+      return res.status(400).json({
+        success: false,
+        message: "No valid fields provided for update",
+      });
+    }
+
+    // Add updatedAt timestamp
+    updateData.updatedAt = new Date();
+
+    // Update the user
+    const result = await collection.updateOne(
+      { _id: new ObjectId(id) },
+      { $set: updateData },
+    );
+
+    if (result.modifiedCount === 0) {
+      return res.json({
+        success: true,
+        message: "No changes were made (data was already up to date)",
+        data: updateData,
+      });
+    }
+
+    // Fetch updated user data (excluding password)
+    const updatedUser = await collection.findOne(
+      { _id: new ObjectId(id) },
+      { projection: { password: 0 } },
+    );
+
+    // Create response object showing what was updated
+    const updatedFields = Object.keys(updateData).filter(
+      (key) => key !== "updatedAt",
+    );
+
+    res.json({
+      success: true,
+      message: `Profile updated successfully. Updated fields: ${updatedFields.join(", ")}`,
+      data: updatedUser,
+      updatedFields: updatedFields,
+    });
+  } catch (error) {
+    console.error("Error updating user profile:", error);
+    res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
   }
 });
 

@@ -6,6 +6,8 @@ import {
   User,
   Users,
   Menu,
+  Pencil,
+  UserRoundCheck,
 } from "lucide-react";
 import { Button } from "./ui/button";
 import { useState } from "react";
@@ -33,6 +35,14 @@ function NavBar() {
           <li className="flex items-center gap-2 text-muted-foreground hover:text-foreground cursor-pointer">
             <User size={16} />
             <a href="/apply">Apply</a>
+          </li>
+          <li className="flex items-center gap-2 text-muted-foreground hover:text-foreground cursor-pointer">
+            <Pencil size={16} />
+            <a href="/profile">Profile</a>
+          </li>
+          <li className="flex items-center gap-2 text-muted-foreground hover:text-foreground cursor-pointer">
+            <UserRoundCheck size={16} />
+            <a href="/professionals">Professionals</a>
           </li>
         </ul>
 
