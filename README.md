@@ -54,7 +54,7 @@ Built with:
 cd server
 npm run dev
 ```
-Runs on: `http://localhost:5000`
+Runs on: `http://localhost:3000`
 
 **Frontend (React + Vite)**
 ```bash
