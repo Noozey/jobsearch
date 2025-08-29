@@ -15,6 +15,7 @@ import { useState } from "react";
 import { api } from "@/lib/axios";
 import { useUser } from "@/context/users";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { toast } from "sonner";
 
 export default function LoginCard() {
   const [email, setEmail] = useState("");
@@ -30,10 +31,12 @@ export default function LoginCard() {
       if (token) {
         localStorage.setItem("token", token);
         login(token);
+        toast.success("Login successful!");
         navigate("/home");
       }
     } catch (error) {
       console.error("Login failed:", error);
+      toast.error("Login failed. Please check your credentials.Or sign up.");
     }
   };
 

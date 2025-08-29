@@ -15,6 +15,7 @@ import { Link } from "react-router-dom";
 import { api } from "@/lib/axios";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 
 export default function RegisterCard() {
   const [name, setName] = useState("");
@@ -28,10 +29,12 @@ export default function RegisterCard() {
     await api
       .post("/auth/register", { name, email, password })
       .then((response) => {
+        toast.success("Registration successful! Please log in.");
         navigate("/");
         console.log("Registration successful:", response.data);
       })
       .catch((error) => {
+        toast.error("Registration failed. Please try again.");
         console.error("Registration failed:", error);
       });
   };

@@ -1,3 +1,4 @@
+import { toast } from "sonner";
 import { api } from "./axios";
 
 const followUser = async (currentUserId: string, targetUserId: string) => {
@@ -7,7 +8,7 @@ const followUser = async (currentUserId: string, targetUserId: string) => {
       sendReqId: targetUserId,
     })
     .then((res) => {
-      console.log(res.data);
+      toast.success(res.data.message);
     })
     .catch((err) => {
       console.error("Error sending follow request:", err);

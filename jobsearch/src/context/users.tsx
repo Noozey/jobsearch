@@ -64,7 +64,6 @@ export const UserProvider = ({ children }: PropsWithChildren<object>) => {
     followers: 0,
     following: 0,
   });
-  console.log("user", user);
   const [isAuthenticate, setIsAuthenticate] = useState(false);
 
   async function checkAuth() {

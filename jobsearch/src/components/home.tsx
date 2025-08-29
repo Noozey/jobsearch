@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -71,7 +72,6 @@ const LeftSidebar = () => {
       const res = await api.get("/users", {
         params: { id: user._id },
       });
-      console.log(res.data);
       setUserData(res.data);
     } catch (err) {
       console.error(err);
@@ -86,8 +86,6 @@ const LeftSidebar = () => {
     }, 5000);
     return () => clearInterval(interval);
   }, [user]);
-
-  console.log(userData);
 
   if (!userData) {
     return <div>loading</div>;
@@ -182,6 +180,8 @@ const MainFeed = () => {
 
   const handlePost = async () => {
     if (postData === "") return;
+    setPostData("");
+    toast("Post created successfully");
     try {
       await api.post("/job/create", {
         postData,
@@ -205,14 +205,13 @@ const MainFeed = () => {
   };
 
   const handleApply = async (value: string) => {
-    console.log(user._id);
     await api
       .post("users/apply", {
         sendReqId: user._id,
         userId: value,
       })
-      .then((res) => {
-        console.log(res.data);
+      .then(() => {
+        toast("Apply request send successfully");
       })
       .catch((err) => {
         console.error("Error sending ApplyData:", err);
@@ -347,7 +346,6 @@ const RightSidebar = () => {
   const fetchUserData = async () => {
     try {
       const allUsers = await api.get("/users/data");
-      console.log(allUsers);
       setSuggestedFriends(allUsers.data.users);
     } catch (err) {
       console.error("Error fetching users", err);
@@ -357,8 +355,6 @@ const RightSidebar = () => {
   useEffect(() => {
     fetchUserData();
   }, []);
-
-  console.log(suggestedFriends);
 
   const [trendingTopics] = useState([
     { tag: "#ReactJS", posts: "12.5k posts" },
