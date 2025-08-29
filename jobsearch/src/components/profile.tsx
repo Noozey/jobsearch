@@ -8,18 +8,21 @@ import { useUser } from "@/context/users";
 import { NavBar } from "./navbar";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/axios";
-import { Pencil, Check, X, Plus, Trash2 } from "lucide-react";
-
+import { Pencil, Check, X, Plus, Trash2, Camera, Upload } from "lucide-react";
+import type { User } from "@/types/user";
 const Profile = () => {
   const { user } = useUser();
-  const [userData, setUserData] = useState();
+  const [userData, setUserData] = useState<User>();
   const [isEditing, setIsEditing] = useState(false);
   const [editData, setEditData] = useState({});
   const [newSkill, setNewSkill] = useState("");
   const [isAddingSkill, setIsAddingSkill] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
   const [updateSuccess, setUpdateSuccess] = useState("");
   const [updateError, setUpdateError] = useState("");
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [previewUrl, setPreviewUrl] = useState("");
 
   const getUser = async () => {
     if (!user?._id) return;
@@ -42,14 +45,89 @@ const Profile = () => {
     }
   };
 
+  const handleFileSelect = (event) => {
+    const file = event.target.files[0];
+    if (file) {
+      // Validate file type
+      if (!file.type.startsWith("image/")) {
+        setUpdateError("Please select a valid image file");
+        setTimeout(() => setUpdateError(""), 3000);
+        return;
+      }
+
+      // Validate file size (5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        setUpdateError("Image size must be less than 5MB");
+        setTimeout(() => setUpdateError(""), 3000);
+        return;
+      }
+
+      setSelectedFile(file);
+
+      // Create preview
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setPreviewUrl(e.target.result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const uploadImage = async () => {
+    if (!selectedFile || !user?._id) return;
+
+    setUploadingImage(true);
+    try {
+      const formData = new FormData();
+      formData.append("avatar", selectedFile);
+
+      const res = await api.post(`/users/upload-avatar/${user._id}`, formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
+
+      if (res.data.success) {
+        // Update both userData and editData with new avatar URL
+        const newAvatarUrl = res.data.avatarUrl;
+        setUserData((prev) => ({ ...prev, avatar: newAvatarUrl }));
+        setEditData((prev) => ({ ...prev, avatar: newAvatarUrl }));
+
+        setUpdateSuccess("Avatar uploaded successfully!");
+        setTimeout(() => setUpdateSuccess(""), 3000);
+
+        // Clear file selection and preview
+        setSelectedFile(null);
+        setPreviewUrl("");
+
+        // Clear file input
+        const fileInput = document.getElementById("avatar-upload");
+        if (fileInput) fileInput.value = "";
+      }
+    } catch (err) {
+      console.error("Error uploading image:", err);
+      const errorMessage =
+        err.response?.data?.message || "Failed to upload image";
+      setUpdateError(errorMessage);
+      setTimeout(() => setUpdateError(""), 5000);
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
+  const clearImageSelection = () => {
+    setSelectedFile(null);
+    setPreviewUrl("");
+    const fileInput = document.getElementById("avatar-upload");
+    if (fileInput) fileInput.value = "";
+  };
+
   const updateProfile = async () => {
     if (!user?._id) return;
     setLoading(true);
     try {
-      // Only send fields that have changed and are not empty
       const updatePayload = {};
 
-      // Check each field for changes and non-empty values
       if (editData.name !== userData.name && editData.name.trim()) {
         updatePayload.name = editData.name.trim();
       }
@@ -59,14 +137,13 @@ const Profile = () => {
       }
 
       if (editData.avatar !== userData.avatar) {
-        updatePayload.avatar = editData.avatar; // Can be empty to clear avatar
+        updatePayload.avatar = editData.avatar;
       }
 
       if (editData.bio !== userData.bio) {
-        updatePayload.bio = editData.bio; // Can be empty to clear bio
+        updatePayload.bio = editData.bio;
       }
 
-      // Always send skills if they changed (backend will handle empty array)
       const originalSkills = userData.skills || [];
       const newSkills = editData.skills || [];
       if (
@@ -145,6 +222,7 @@ const Profile = () => {
     setIsEditing(false);
     setUpdateError(""); // Clear any error messages
     setUpdateSuccess(""); // Clear any success messages
+    clearImageSelection(); // Clear any pending image selection
     setEditData({
       name: userData.name || "",
       email: userData.email || "",
@@ -222,34 +300,94 @@ const Profile = () => {
               </div>
             )}
           </CardHeader>
-          <CardContent className="p-6 flex items-center justify-center">
-            <div className="flex flex-col items-center justify-center  gap-6">
+          <CardContent className="p-6 flex items-center justify-center w-full">
+            <div className="flex flex-col items-center justify-center gap-6 w-full">
               {/* Avatar and Basic Info */}
-              <div className="flex flex-col items-center justify-center  text-center ">
-                <Avatar className="w-24 h-24 mb-4">
-                  <AvatarImage
-                    src={isEditing ? editData.avatar : userData.avatar}
-                  />
-                  <AvatarFallback className="text-xl">
-                    {(isEditing ? editData.name : userData.name)
-                      .split(" ")
-                      .map((n) => n[0])
-                      .join("")}
-                  </AvatarFallback>
-                </Avatar>
+              <div className="flex flex-col items-center justify-center text-center w-full">
+                {/* Avatar Section */}
+                <div className="relative mb-4">
+                  <Avatar className="w-24 h-24">
+                    <AvatarImage
+                      src={
+                        previewUrl ||
+                        (isEditing ? editData.avatar : userData.avatar)
+                      }
+                    />
+                    <AvatarFallback className="text-xl">
+                      {(isEditing ? editData.name : userData.name)
+                        .split(" ")
+                        .map((n) => n[0])
+                        .join("")}
+                    </AvatarFallback>
+                  </Avatar>
+
+                  {isEditing && (
+                    <div className="absolute -bottom-2 -right-2">
+                      <label htmlFor="avatar-upload">
+                        <div className="bg-primary text-primary-foreground rounded-full p-2 cursor-pointer hover:bg-primary/90 transition-colors">
+                          <Camera className="w-4 h-4" />
+                        </div>
+                      </label>
+                      <input
+                        id="avatar-upload"
+                        type="file"
+                        accept="image/*"
+                        onChange={handleFileSelect}
+                        className="hidden"
+                      />
+                    </div>
+                  )}
+                </div>
+
+                {/* Image Upload Controls */}
+                {isEditing && selectedFile && (
+                  <div className="mb-4 p-3 border border-dashed border-gray-300 rounded-lg bg-secondary">
+                    <div className="text-sm text-gray-600 mb-2">
+                      Selected: {selectedFile.name}
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        onClick={uploadImage}
+                        disabled={uploadingImage}
+                      >
+                        <Upload className="w-4 h-4 mr-1" />
+                        {uploadingImage ? "Uploading..." : "Upload"}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={clearImageSelection}
+                        disabled={uploadingImage}
+                      >
+                        <X className="w-4 h-4 mr-1" />
+                        Clear
+                      </Button>
+                    </div>
+                  </div>
+                )}
 
                 {isEditing ? (
-                  <div className="w-[300px] space-y-3">
+                  <div className="w-[70%] space-y-3">
                     <div>
+                      <label className="text-sm font-medium text-gray-700 block mb-1">
+                        Avatar URL (optional)
+                      </label>
                       <Input
-                        placeholder="Avatar URL (leave empty to remove)"
+                        placeholder="Or paste an image URL here"
                         value={editData.avatar}
                         onChange={(e) =>
                           handleInputChange("avatar", e.target.value)
                         }
                       />
+                      <p className="text-xs text-gray-500 mt-1">
+                        Upload an image above or paste a URL here
+                      </p>
                     </div>
                     <div>
+                      <label className="text-sm font-medium text-gray-700 block mb-1">
+                        Full Name *
+                      </label>
                       <Input
                         placeholder="Full Name"
                         value={editData.name}
@@ -260,6 +398,9 @@ const Profile = () => {
                       />
                     </div>
                     <div>
+                      <label className="text-sm font-medium text-gray-700 block mb-1">
+                        Email *
+                      </label>
                       <Input
                         placeholder="Email"
                         type="email"
@@ -306,20 +447,27 @@ const Profile = () => {
               </div>
 
               {/* Bio and Skills */}
-              <div className="flex-1 space-y-6 flex flex-col items-center justify-center ">
+              <div className="flex-1 space-y-6 flex flex-col items-center justify-center w-full">
                 {/* Bio Section */}
-                <div>
+                <div className="w-full flex flex-col items-center justify-center">
                   <h4 className="font-semibold mb-3 w-full text-center">
                     About
                   </h4>
                   {isEditing ? (
-                    <Textarea
-                      placeholder="Tell us about yourself... (leave empty to remove)"
-                      value={editData.bio}
-                      onChange={(e) => handleInputChange("bio", e.target.value)}
-                      rows={4}
-                      className="resize-none w-[300px]"
-                    />
+                    <div className="space-y-1 w-full flex flex-col items-center justify-center">
+                      <Textarea
+                        placeholder="Tell us about yourself..."
+                        value={editData.bio}
+                        onChange={(e) =>
+                          handleInputChange("bio", e.target.value)
+                        }
+                        rows={4}
+                        className="resize-none w-[70%] "
+                      />
+                      <p className="text-xs text-gray-500">
+                        Leave empty to remove bio
+                      </p>
+                    </div>
                   ) : (
                     <p className="text-sm text-muted-foreground">
                       {userData.bio || "No bio available yet."}
@@ -329,7 +477,7 @@ const Profile = () => {
 
                 {/* Skills Section */}
                 <div>
-                  <div className="flex items-center justify-between mb-3 ">
+                  <div className="flex items-center justify-between mb-3 gap-4">
                     <h4 className="font-semibold text-center w-full">
                       Skills & Expertise
                     </h4>
@@ -371,11 +519,14 @@ const Profile = () => {
                   )}
 
                   {/* Skills Display */}
-                  <div className="flex flex-wrap gap-2">
+                  <div className="flex flex-wrap gap-2 justify-center">
                     {(isEditing ? editData.skills : userData.skills || []).map(
                       (skill, index) => (
                         <div key={index} className="relative group">
-                          <Badge variant="secondary" className="pr-8">
+                          <Badge
+                            variant="secondary"
+                            className={isEditing ? "pr-8" : ""}
+                          >
                             {skill}
                             {isEditing && (
                               <Button

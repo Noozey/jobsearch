@@ -1,6 +1,9 @@
 // userRouter.js
+import "dotenv/config";
 import { Router } from "express";
 import connectToMongo from "../database/MangoDb.js";
+import multer from "multer";
+import { v2 as cloudinary } from "cloudinary";
 import { ObjectId } from "mongodb";
 import bcrypt from "bcrypt";
 
@@ -231,6 +234,165 @@ userRouter.post("/reject-application", async (req, res) => {
   }
 });
 
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
+
+const storage = multer.memoryStorage();
+const upload = multer({
+  storage: storage,
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5MB limit
+  },
+  fileFilter: (req, file, cb) => {
+    // Check if the file is an image
+    if (file.mimetype.startsWith("image/")) {
+      cb(null, true);
+    } else {
+      cb(new Error("Only image files are allowed!"), false);
+    }
+  },
+});
+
+const uploadToCloudinary = (buffer, options = {}) => {
+  return new Promise((resolve, reject) => {
+    const uploadStream = cloudinary.uploader.upload_stream(
+      {
+        resource_type: "image",
+        folder: "profile_avatars", // Organize uploads in folders
+
+        transformation: [
+          { width: 400, height: 400, crop: "fill" },
+          { quality: "auto" },
+          { fetch_format: "auto" }, // not format
+        ],
+
+        ...options,
+      },
+      (error, result) => {
+        if (error) {
+          console.error("Upload error:", error);
+          reject(error);
+        } else {
+          console.log("Upload success:", result);
+          resolve(result);
+        }
+      },
+    );
+    console.log("Buffer type:", typeof buffer);
+    console.log("Buffer length:", buffer?.length);
+    uploadStream.end(buffer);
+  });
+};
+
+userRouter.post(
+  "/upload-avatar/:id",
+  upload.single("avatar"),
+  async (req, res) => {
+    try {
+      const { id } = req.params;
+
+      // Validate user ID format
+      if (!ObjectId.isValid(id)) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid user ID format",
+        });
+      }
+
+      // Check if file was uploaded
+      if (!req.file) {
+        return res.status(400).json({
+          success: false,
+          message: "No image file uploaded",
+        });
+      }
+
+      const client = await connectToMongo();
+      const db = client.db("Auth");
+      const collection = db.collection("register");
+
+      // Check if user exists
+      const existingUser = await collection.findOne({ _id: new ObjectId(id) });
+      if (!existingUser) {
+        return res.status(404).json({
+          success: false,
+          message: "User not found",
+        });
+      }
+
+      // Upload image to Cloudinary
+      const uploadResult = await uploadToCloudinary(req.file.buffer, {
+        public_id: `avatar_${id}_${Date.now()}`, // Unique filename
+      });
+
+      // Update user document with new avatar URL
+      const updateResult = await collection.updateOne(
+        { _id: new ObjectId(id) },
+        {
+          $set: {
+            avatar: uploadResult.secure_url,
+            updatedAt: new Date(),
+          },
+        },
+      );
+
+      if (updateResult.modifiedCount === 0) {
+        return res.status(500).json({
+          success: false,
+          message: "Failed to update user avatar",
+        });
+      }
+
+      // If user had a previous avatar, optionally delete it from Cloudinary
+      if (existingUser.avatar && existingUser.avatar.includes("cloudinary")) {
+        try {
+          // Extract public_id from the URL
+          const urlParts = existingUser.avatar.split("/");
+          const fileWithExt = urlParts[urlParts.length - 1];
+          const publicId = `profile_avatars/${fileWithExt.split(".")[0]}`;
+
+          await cloudinary.uploader.destroy(publicId);
+        } catch (deleteError) {
+          console.log("Could not delete previous avatar:", deleteError);
+          // Don't fail the request if we can't delete the old image
+        }
+      }
+
+      // Fetch updated user data
+      const updatedUser = await collection.findOne(
+        { _id: new ObjectId(id) },
+        { projection: { password: 0 } },
+      );
+
+      res.json({
+        success: true,
+        message: "Avatar uploaded successfully",
+        data: updatedUser,
+        avatarUrl: uploadResult.secure_url,
+      });
+    } catch (error) {
+      console.error("Error uploading avatar:", error);
+
+      // Handle specific Cloudinary errors
+      if (error.message && error.message.includes("Invalid image file")) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid image file format",
+        });
+      }
+
+      res.status(500).json({
+        success: false,
+        message: "Failed to upload avatar",
+        error: error.message,
+      });
+    }
+  },
+);
+
 userRouter.put("/:id", async (req, res) => {
   try {
     const { id } = req.params;
@@ -261,6 +423,7 @@ userRouter.put("/:id", async (req, res) => {
     // Prepare update object - only add fields that are not empty
     const updateData = {};
     let hasUpdates = false;
+    const updatedFields = [];
 
     // Helper function to check if value is not empty
     const isNotEmpty = (value) => {
@@ -271,13 +434,17 @@ userRouter.put("/:id", async (req, res) => {
     };
 
     // Update name if provided and not empty
-    if (isNotEmpty(name)) {
+    if (isNotEmpty(name) && name.trim() !== existingUser.name) {
       updateData.name = name.trim();
+      updatedFields.push("name");
       hasUpdates = true;
     }
 
     // Update email if provided and not empty
-    if (isNotEmpty(email)) {
+    if (
+      isNotEmpty(email) &&
+      email.toLowerCase().trim() !== existingUser.email
+    ) {
       const emailLower = email.toLowerCase().trim();
 
       // Check if email is already taken by another user
@@ -294,23 +461,26 @@ userRouter.put("/:id", async (req, res) => {
       }
 
       updateData.email = emailLower;
+      updatedFields.push("email");
       hasUpdates = true;
     }
 
-    // Update avatar if provided and not empty
-    if (isNotEmpty(avatar)) {
-      updateData.avatar = avatar.trim();
+    // Update avatar if provided (can be empty to clear, or new URL)
+    if (avatar !== existingUser.avatar) {
+      updateData.avatar = avatar || ""; // Allow empty string to clear avatar
+      updatedFields.push("avatar");
       hasUpdates = true;
     }
 
-    // Update bio if provided and not empty
-    if (isNotEmpty(bio)) {
-      updateData.bio = bio.trim();
+    // Update bio if provided (can be empty to clear)
+    if (bio !== existingUser.bio) {
+      updateData.bio = bio || ""; // Allow empty string to clear bio
+      updatedFields.push("bio");
       hasUpdates = true;
     }
 
-    // Update skills if provided and not empty
-    if (Array.isArray(skills) && skills.length > 0) {
+    // Update skills if provided
+    if (Array.isArray(skills)) {
       // Filter out empty skills and remove duplicates
       const validSkills = [
         ...new Set(
@@ -320,8 +490,14 @@ userRouter.put("/:id", async (req, res) => {
         ),
       ];
 
-      if (validSkills.length > 0) {
+      // Check if skills array has changed
+      const existingSkills = existingUser.skills || [];
+      if (
+        JSON.stringify(existingSkills.sort()) !==
+        JSON.stringify(validSkills.sort())
+      ) {
         updateData.skills = validSkills;
+        updatedFields.push("skills");
         hasUpdates = true;
       }
     }
@@ -353,6 +529,7 @@ userRouter.put("/:id", async (req, res) => {
       const saltRounds = 10;
       const hashedPassword = await bcrypt.hash(password.trim(), saltRounds);
       updateData.password = hashedPassword;
+      updatedFields.push("password");
       hasUpdates = true;
     }
 
@@ -377,7 +554,8 @@ userRouter.put("/:id", async (req, res) => {
       return res.json({
         success: true,
         message: "No changes were made (data was already up to date)",
-        data: updateData,
+        data: existingUser,
+        updatedFields: [],
       });
     }
 
@@ -385,11 +563,6 @@ userRouter.put("/:id", async (req, res) => {
     const updatedUser = await collection.findOne(
       { _id: new ObjectId(id) },
       { projection: { password: 0 } },
-    );
-
-    // Create response object showing what was updated
-    const updatedFields = Object.keys(updateData).filter(
-      (key) => key !== "updatedAt",
     );
 
     res.json({
